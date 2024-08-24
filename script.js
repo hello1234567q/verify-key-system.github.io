@@ -4,7 +4,7 @@
 function checkCheckpointCompletion() {
     for (let i = 1; i <= 4; i++) {
         const checkpointCompleted = localStorage.getItem(`checkpoint${i}Completed`);
-        if (!checkpointCompleted) {
+        if (checkpointCompleted !== 'true') { // Đảm bảo trạng thái là 'true'
             return false; // Nếu có checkpoint chưa hoàn thành, trả về false
         }
     }
@@ -13,7 +13,33 @@ function checkCheckpointCompletion() {
 
 // Hàm lưu trạng thái checkpoint
 function completeCheckpoint(checkpointNumber) {
-    localStorage.setItem(`checkpoint${checkpointNumber}Completed`, true);
+    localStorage.setItem(`checkpoint${checkpointNumber}Completed`, 'true'); // Lưu trạng thái là 'true'
+}
+
+// Hàm bảo vệ chống bypass
+function validateCheckpointCompletion(checkpointNumber) {
+    // Thay vì chỉ lưu trạng thái đơn giản, bạn có thể dùng token hoặc mã xác thực
+    const token = localStorage.getItem('completionToken');
+    if (!token || !isValidToken(token, checkpointNumber)) {
+        alert('Invalid completion attempt.');
+        return false;
+    }
+    return true;
+}
+
+// Hàm tạo mã xác thực
+function isValidToken(token, checkpointNumber) {
+    // Kiểm tra mã xác thực với checkpointNumber
+    // Đây là ví dụ đơn giản, bạn nên sử dụng phương pháp phức tạp hơn trong thực tế
+    return token === `checkpoint-${checkpointNumber}`;
+}
+
+// Hiển thị thông báo hoàn thành checkpoint
+function showCompletionMessage(checkpointNumber) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'alert alert-success';
+    messageDiv.textContent = `Checkpoint ${checkpointNumber} completed!`;
 }
 
 // Kiểm tra trạng thái khi người dùng cố gắng chuyển đến checkpoint tiếp theo
@@ -22,8 +48,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (currentPage.includes('checkpoint')) {
         const checkpointNumber = parseInt(currentPage.match(/\d+/)[0]);
-        const prevCheckpointCompleted = checkpointNumber === 1 || localStorage.getItem(`checkpoint${checkpointNumber - 1}Completed`);
 
+        // Cập nhật mã kiểm tra checkpoint
+        const prevCheckpointCompleted = checkpointNumber === 1 || localStorage.getItem(`checkpoint${checkpointNumber - 1}Completed`) === 'true';
         if (!prevCheckpointCompleted && checkpointNumber > 1) {
             // Hiển thị thông báo nếu checkpoint trước chưa được hoàn thành
             alert('You need to complete the previous checkpoint before proceeding.');
@@ -34,8 +61,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const completeButton = document.getElementById(`completeCheckpoint${checkpointNumber}`);
         if (completeButton) {
             completeButton.addEventListener('click', () => {
-                completeCheckpoint(checkpointNumber); // Hoàn thành checkpoint hiện tại
-                alert(`Checkpoint ${checkpointNumber} completed!`);
+                if (validateCheckpointCompletion(checkpointNumber)) {
+                    completeCheckpoint(checkpointNumber); // Hoàn thành checkpoint hiện tại
+                    showCompletionMessage(checkpointNumber); // Hiển thị thông báo hoàn thành
+                }
             });
         }
     }
@@ -75,4 +104,3 @@ function checkKeyExpiration() {
     }
     return localStorage.getItem('generatedKey'); // Trả về key còn hiệu lực
 }
-
