@@ -1,106 +1,51 @@
-// script.js
+// result-script.js
 
-// Hàm kiểm tra trạng thái hoàn thành của các checkpoint
-function checkCheckpointCompletion() {
-    for (let i = 1; i <= 4; i++) {
-        const checkpointCompleted = localStorage.getItem(`checkpoint${i}Completed`);
-        if (checkpointCompleted !== 'true') { // Đảm bảo trạng thái là 'true'
-            return false; // Nếu có checkpoint chưa hoàn thành, trả về false
-        }
-    }
-    return true; // Tất cả các checkpoint đã hoàn thành
-}
-
-// Hàm lưu trạng thái checkpoint
-function completeCheckpoint(checkpointNumber) {
-    localStorage.setItem(`checkpoint${checkpointNumber}Completed`, 'true'); // Lưu trạng thái là 'true'
-}
-
-// Hàm bảo vệ chống bypass
-function validateCheckpointCompletion(checkpointNumber) {
-    // Thay vì chỉ lưu trạng thái đơn giản, bạn có thể dùng token hoặc mã xác thực
-    const token = localStorage.getItem('completionToken');
-    if (!token || !isValidToken(token, checkpointNumber)) {
-        alert('Invalid completion attempt.');
-        return false;
-    }
-    return true;
-}
-
-// Hàm tạo mã xác thực
-function isValidToken(token, checkpointNumber) {
-    // Kiểm tra mã xác thực với checkpointNumber
-    // Đây là ví dụ đơn giản, bạn nên sử dụng phương pháp phức tạp hơn trong thực tế
-    return token === `checkpoint-${checkpointNumber}`;
-}
-
-// Hiển thị thông báo hoàn thành checkpoint
-function showCompletionMessage(checkpointNumber) {
-    const messageDiv = document.getElementById('message');
-    messageDiv.style.display = 'block';
-    messageDiv.className = 'alert alert-success';
-    messageDiv.textContent = `Checkpoint ${checkpointNumber} completed!`;
-}
-
-// Kiểm tra trạng thái khi người dùng cố gắng chuyển đến checkpoint tiếp theo
 document.addEventListener('DOMContentLoaded', function () {
-    const currentPage = window.location.pathname;
+    const keyDisplay = document.getElementById('keyDisplay');
+    const errorDisplay = document.getElementById('errorDisplay');
 
-    if (currentPage.includes('checkpoint')) {
-        const checkpointNumber = parseInt(currentPage.match(/\d+/)[0]);
+    // URL của Pastebin hoặc URL chứa key
+    const keyUrl = 'https://pastebin.com/raw/0f5DJcTz'; // Thay YOUR_PASTEBIN_ID bằng ID của bạn
 
-        // Cập nhật mã kiểm tra checkpoint
-        const prevCheckpointCompleted = checkpointNumber === 1 || localStorage.getItem(`checkpoint${checkpointNumber - 1}Completed`) === 'true';
-        if (!prevCheckpointCompleted && checkpointNumber > 1) {
-            // Hiển thị thông báo nếu checkpoint trước chưa được hoàn thành
-            alert('You need to complete the previous checkpoint before proceeding.');
-            window.location.href = `checkpoint${checkpointNumber - 1}.html`; // Chuyển hướng về checkpoint trước đó
-        }
-
-        // Thực hiện khi người dùng nhấp vào nút hoàn thành checkpoint
-        const completeButton = document.getElementById(`completeCheckpoint${checkpointNumber}`);
-        if (completeButton) {
-            completeButton.addEventListener('click', () => {
-                if (validateCheckpointCompletion(checkpointNumber)) {
-                    completeCheckpoint(checkpointNumber); // Hoàn thành checkpoint hiện tại
-                    showCompletionMessage(checkpointNumber); // Hiển thị thông báo hoàn thành
+    // Hàm lấy key từ URL
+    function fetchKey() {
+        fetch(keyUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
                 }
+                return response.text();
+            })
+            .then(key => {
+                // Lưu key vào localStorage với thời gian hết hạn 24 giờ
+                const expiryTime = new Date().getTime() + 24 * 60 * 60 * 1000; // 24 giờ
+                localStorage.setItem('userKey', key);
+                localStorage.setItem('keyExpiry', expiryTime);
+
+                // Hiển thị key
+                keyDisplay.textContent = `Your key: ${key}`;
+                errorDisplay.style.display = 'none'; // Ẩn thông báo lỗi nếu kết nối thành công
+            })
+            .catch(error => {
+                keyDisplay.textContent = 'Failed to fetch key.';
+                errorDisplay.textContent = 'Unable to connect to the key source. Please check your VPN or network connection.';
+                errorDisplay.style.display = 'block'; // Hiển thị thông báo lỗi
+                console.error('There was a problem with the fetch operation:', error);
             });
-        }
     }
 
-    // Hiển thị key nếu trên trang kết quả
-    if (currentPage.includes('result.html')) {
-        if (checkCheckpointCompletion()) {
-            const key = generateKey();
-            document.getElementById('key').textContent = key;
-            setKeyExpiration(); // Thiết lập thời gian hết hạn cho key
-        } else {
-            document.getElementById('key').textContent = 'You must complete all checkpoints to receive the key.';
-        }
+    // Hàm kiểm tra xem key có hết hạn không
+    function isKeyExpired() {
+        const expiryTime = localStorage.getItem('keyExpiry');
+        return expiryTime ? new Date().getTime() > expiryTime : true;
+    }
+
+    // Nếu key đã hết hạn hoặc không tồn tại, lấy key từ URL
+    if (isKeyExpired()) {
+        fetchKey();
+    } else {
+        // Hiển thị key từ localStorage nếu chưa hết hạn
+        const storedKey = localStorage.getItem('userKey') || 'Your key is not available.';
+        keyDisplay.textContent = storedKey;
     }
 });
-
-// Hàm tạo key ngẫu nhiên
-function generateKey() {
-    // Tạo một key ngẫu nhiên, có thể tùy chỉnh theo yêu cầu
-    return 'KEY-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-}
-
-// Hàm thiết lập thời gian hết hạn cho key (24 giờ)
-function setKeyExpiration() {
-    const expirationDate = new Date();
-    expirationDate.setHours(expirationDate.getHours() + 24);
-    localStorage.setItem('keyExpiration', expirationDate.toISOString());
-}
-
-// Hàm kiểm tra thời gian hết hạn của key
-function checkKeyExpiration() {
-    const expirationDate = new Date(localStorage.getItem('keyExpiration'));
-    const now = new Date();
-    if (now > expirationDate) {
-        localStorage.removeItem('keyExpiration'); // Xóa key hết hạn
-        return null; // Key đã hết hạn
-    }
-    return localStorage.getItem('generatedKey'); // Trả về key còn hiệu lực
-}
