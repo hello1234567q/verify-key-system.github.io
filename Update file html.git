@@ -1,4 +1,4 @@
-git remote add origin https://github.com/username/username.github.io.git
+git remote add origin https://github.com/hello1234567q/verify-key-system.github.io.git
 git add .
 git commit -m "Initial commit"
 git push -u origin main
